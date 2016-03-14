@@ -6,6 +6,8 @@ description = "Implementation of the package-merge algorithm for data compressio
 keywords = ["data", "compression", "data-compression", "Huffman", "package-merge", "packagemerge", "package", "merge"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
+homepage = "https://github.com/sellibitze/packagemerge-rs"
+repository = "https://github.com/sellibitze/packagemerge-rs.git"
 
 [dependencies]
 itertools = "0.4"
