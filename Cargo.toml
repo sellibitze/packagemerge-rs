@@ -1,0 +1,6 @@
+[package]
+name = "packagemerge"
+version = "0.1.0"
+authors = ["Sebastian Gesemann <s.gesemann@gmail.com>"]
+
+[dependencies]
