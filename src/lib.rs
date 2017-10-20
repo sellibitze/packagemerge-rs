@@ -12,6 +12,7 @@ use std::cmp;
 use std::error;
 use std::fmt;
 use std::mem;
+use std::slice;
 
 use itertools::Itertools;
 
@@ -23,7 +24,7 @@ fn order_non_nan(a: f64, b: f64) -> cmp::Ordering {
     { cmp::Ordering::Equal }
 }
 
-fn complete_chunks<T>(mut slice: &[T], csize: usize) -> std::slice::Chunks<T> {
+fn complete_chunks<T>(mut slice: &[T], csize: usize) -> slice::Chunks<T> {
     let remainder = slice.len() % csize;
     if remainder > 0 {
         slice = &slice[0..(slice.len() - remainder)];
@@ -84,9 +85,8 @@ pub fn package_merge(frequencies: &[f64], max_len: u32) -> Result<Vec<u32>, Erro
     }
 
     let sorted = {
-        let mut tmp = Vec::new();
-        tmp.extend(0..frequencies.len());
-        tmp.sort_by( |&a, &b| order_non_nan(frequencies[a],frequencies[b]) );
+        let mut tmp: Vec<_> = (0..frequencies.len()).collect();
+        tmp.sort_by(|&a, &b| order_non_nan(frequencies[a], frequencies[b]));
         tmp
     };
 
@@ -146,10 +146,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn it_fails() {
         let freqs = [1.0, 32.0, 16.0, 4.0, 8.0, 2.0, 1.0];
-        package_merge(&freqs, 2).unwrap();
+        assert!(package_merge(&freqs, 2).is_err());
     }
 }
 
