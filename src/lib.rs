@@ -12,18 +12,18 @@ use std::cmp;
 use std::error;
 use std::fmt;
 use std::mem;
+use std::slice;
+use std::ops;
 
 use itertools::Itertools;
 
 use Error::*;
 
-fn order_non_nan(a: f64, b: f64) -> cmp::Ordering {
-    if a < b { cmp::Ordering::Less } else
-    if a > b { cmp::Ordering::Greater } else
-    { cmp::Ordering::Equal }
+fn order_non_nan<T: PartialOrd>(a: &T, b: &T) -> cmp::Ordering {
+    a.partial_cmp(b).unwrap_or(cmp::Ordering::Equal)
 }
 
-fn complete_chunks<T>(mut slice: &[T], csize: usize) -> std::slice::Chunks<T> {
+fn complete_chunks<T>(mut slice: &[T], csize: usize) -> slice::Chunks<T> {
     let remainder = slice.len() % csize;
     if remainder > 0 {
         slice = &slice[0..(slice.len() - remainder)];
@@ -71,8 +71,12 @@ impl error::Error for Error {
 /// maximum length of code words (up to 32), this function will apply
 /// the package merge algorithm to compute optimal code word lengths
 /// for the symbols so that the expected code word length is minimized.
-pub fn package_merge(frequencies: &[f64], max_len: u32) -> Result<Vec<u32>, Error> {
-
+///
+/// `frequencies` can be a slice of any numeric type, e.g. `f64` or `u32`.
+pub fn package_merge<Num>(frequencies: &[Num], max_len: u32) -> Result<Vec<u32>, Error>
+where
+    Num: PartialOrd + Copy + ops::Add<Output = Num>,
+{
     if frequencies.is_empty() {
         return Err(Error::NoSymbols);
     }
@@ -84,16 +88,15 @@ pub fn package_merge(frequencies: &[f64], max_len: u32) -> Result<Vec<u32>, Erro
     }
 
     let sorted = {
-        let mut tmp = Vec::new();
-        tmp.extend(0..frequencies.len());
-        tmp.sort_by( |&a, &b| order_non_nan(frequencies[a],frequencies[b]) );
+        let mut tmp: Vec<_> = (0..frequencies.len()).collect();
+        tmp.sort_by(|&a, &b| order_non_nan(&frequencies[a], &frequencies[b]));
         tmp
     };
 
     let capa = frequencies.len() * 2 - 1;
-    let mut list: Vec<f64> = Vec::with_capacity(capa);
+    let mut list: Vec<Num> = Vec::with_capacity(capa);
     let mut flags: Vec<u32> = vec![0; capa];
-    let mut merged: Vec<f64> = Vec::with_capacity(capa);
+    let mut merged: Vec<Num> = Vec::with_capacity(capa);
 
     for depth in 0..max_len {
         {
@@ -146,10 +149,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    fn integer_frequencies() {
+        let freqs = [1, 32, 16, 4, 8, 2, 1];
+        let cl = package_merge(&freqs, 8).unwrap();
+        assert_eq!(&cl[..], &[6, 1, 2, 4, 3, 5, 6]);
+        let cl = package_merge(&freqs, 5).unwrap();
+        assert_eq!(&cl[..], &[5, 1, 2, 5, 3, 5, 5]);
+    }
+
+    #[test]
     fn it_fails() {
         let freqs = [1.0, 32.0, 16.0, 4.0, 8.0, 2.0, 1.0];
-        package_merge(&freqs, 2).unwrap();
+        assert!(package_merge(&freqs, 2).is_err());
     }
 }
 
